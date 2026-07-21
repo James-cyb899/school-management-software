@@ -50,6 +50,10 @@ function requireRole(...roles) {
 // ---- REGISTER ----
 router.post('/register', async (req, res) => {
   try {
+    const regOpenSetting = db.prepare("SELECT value FROM app_settings WHERE key = 'allow_registration'").get();
+    if (regOpenSetting && regOpenSetting.value === 'false') {
+      return res.status(403).json({ error: 'New account registration is currently turned off by your Administration. Contact them to have an account created.' });
+    }
     const { full_name, email, password, role } = req.body;
     if (!full_name || !email || !password || !role) {
       return res.status(400).json({ error: 'Full name, email, password and role are all required.' });
@@ -59,6 +63,9 @@ router.post('/register', async (req, res) => {
     }
     if (password.length < 8) {
       return res.status(400).json({ error: 'Password must be at least 8 characters long.' });
+    }
+    if (!/[a-zA-Z]/.test(password) || !/[0-9]/.test(password)) {
+      return res.status(400).json({ error: 'Password must contain both letters and numbers.' });
     }
     if (!ALLOWED_ROLES.includes(role)) {
       return res.status(400).json({ error: 'Role must be one of: admin, finance, teacher.' });
@@ -144,6 +151,9 @@ router.post('/reset-password', async (req, res) => {
     const { token, password } = req.body;
     if (!token || !password) return res.status(400).json({ error: 'Token and new password are required.' });
     if (password.length < 8) return res.status(400).json({ error: 'Password must be at least 8 characters long.' });
+    if (!/[a-zA-Z]/.test(password) || !/[0-9]/.test(password)) {
+      return res.status(400).json({ error: 'Password must contain both letters and numbers.' });
+    }
 
     const record = db.prepare('SELECT * FROM password_resets WHERE token = ?').get(token);
     if (!record) return res.status(400).json({ error: 'This reset link is invalid.' });

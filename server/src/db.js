@@ -93,6 +93,22 @@ CREATE TABLE IF NOT EXISTS announcements (
   ann_code TEXT UNIQUE,
   title TEXT, audience TEXT, date TEXT
 );
+CREATE TABLE IF NOT EXISTS app_settings (
+  key TEXT PRIMARY KEY,
+  value TEXT
+);
+CREATE TABLE IF NOT EXISTS mpesa_transactions (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  checkout_request_id TEXT UNIQUE,
+  merchant_request_id TEXT,
+  invoice_id INTEGER,
+  phone TEXT,
+  amount REAL,
+  status TEXT DEFAULT 'Pending',
+  mpesa_receipt TEXT,
+  result_desc TEXT,
+  created_at TEXT DEFAULT (datetime('now'))
+);
 `);
 
 // ---- Seed a small illustrative dataset only if empty ----
@@ -117,6 +133,12 @@ if (studentCount === 0) {
 
   db.prepare(`INSERT INTO announcements (ann_code,title,audience,date) VALUES (?,?,?,?)`)
     .run('AN-1', 'Welcome to School Management Software', 'Everyone', new Date().toISOString().slice(0,10));
+}
+
+// Default security setting: registration open by default
+const regSetting = db.prepare('SELECT value FROM app_settings WHERE key = ?').get('allow_registration');
+if (!regSetting) {
+  db.prepare('INSERT INTO app_settings (key, value) VALUES (?, ?)').run('allow_registration', 'true');
 }
 
 module.exports = db;
