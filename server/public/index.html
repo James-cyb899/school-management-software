@@ -475,8 +475,8 @@ tbody tr:hover{background:rgba(176,141,87,0.06);}
 
 <script>
 const API = '';
-let authToken = localStorage.getItem('sms_token') || null;
-let currentUser = JSON.parse(localStorage.getItem('sms_user') || 'null');
+let authToken = null;
+let currentUser = null;
 let currentSection = 'dashboard';
 let pendingRegisterRole = 'admin';
 
@@ -714,30 +714,20 @@ async function doForgotPassword(){
 
 function completeLogin(token, user){
   authToken = token; currentUser = user;
-  localStorage.setItem('sms_token', token);
-  localStorage.setItem('sms_user', JSON.stringify(user));
   enterApp();
 }
 
 function logout(){
   authToken = null; currentUser = null;
-  localStorage.removeItem('sms_token');
-  localStorage.removeItem('sms_user');
   document.getElementById('appRoot').style.display = 'none';
   document.getElementById('loginScreen').style.display = 'flex';
   document.getElementById('siPassword').value = '';
 }
 
-async function restoreSession(){
-  if(!authToken){ renderRegisterRoleGrid(); return; }
-  try{
-    await apiFetch('/api/auth/me');
-    enterApp();
-  }catch(e){
-    authToken = null; currentUser = null;
-    localStorage.removeItem('sms_token'); localStorage.removeItem('sms_user');
-    renderRegisterRoleGrid();
-  }
+function restoreSession(){
+  // Session persistence is intentionally disabled: every page load / refresh
+  // requires signing in again, even on the same device or browser.
+  renderRegisterRoleGrid();
 }
 
 function enterApp(){
@@ -1076,18 +1066,47 @@ async function renderCommunication(){
           </div>`).join('') || '<p style="font-size:13px;color:var(--ink-soft)">No announcements yet.</p>'}</div></div></div>
         <div>
           <div class="card"><h3>Channels</h3>
-            <div class="toggle-row"><span>Email (Gmail SMTP)</span><button class="switch on"></button></div>
-            <div class="toggle-row"><span>SMS</span><button class="switch"></button></div>
-            <div class="toggle-row"><span>Push notifications</span><button class="switch"></button></div>
+            <div class="toggle-row"><span>Email (real — via your Gmail settings)</span><button class="switch on" id="chEmail" onclick="toggleChannel('chEmail')"></button></div>
+            <div class="toggle-row"><span>SMS <span style="color:var(--ink-soft); font-weight:400;">(needs a paid provider)</span></span><button class="switch" id="chSms" onclick="toggleChannel('chSms')"></button></div>
+            <div class="toggle-row"><span>Push notifications <span style="color:var(--ink-soft); font-weight:400;">(not yet built)</span></span><button class="switch" id="chPush" onclick="toggleChannel('chPush')"></button></div>
           </div>
           <div class="card"><h3>Emergency alert</h3>
-            <p style="font-size:12.5px;color:var(--ink-soft); margin-bottom:10px;">Sends to every configured channel. Connect an SMS provider for real text alerts — email already works via your Gmail SMTP settings.</p>
-            ${editable ? `<button class="btn btn-danger-outline" style="width:100%; justify-content:center;" onclick="toast('Emergency alert queued (connect an SMS provider for text alerts).')">Send emergency alert</button>` : `<p style="font-size:12px;color:var(--ink-soft);">Only Administration and Teacher accounts can trigger alerts.</p>`}
+            <p style="font-size:12.5px;color:var(--ink-soft); margin-bottom:12px;">This really sends an email to every registered account right now, using your Gmail settings. SMS/push aren't wired to a provider yet, so only Email will actually go out even if toggled on.</p>
+            ${editable ? `
+              <div class="form-field"><label>Subject</label><input type="text" id="alertSubject" placeholder="e.g. School closed tomorrow"></div>
+              <div class="form-field"><label>Message</label><textarea id="alertMessage" rows="4" placeholder="Type the alert message here…" style="width:100%; padding:9px 11px; border:1px solid var(--line); border-radius:6px; font-size:13.5px; font-family:inherit; resize:vertical;"></textarea></div>
+              <button class="btn btn-danger-outline" style="width:100%; justify-content:center;" id="alertBtn" onclick="sendEmergencyAlert()">Send emergency alert</button>
+            ` : `<p style="font-size:12px;color:var(--ink-soft);">Only Administration and Teacher accounts can trigger alerts.</p>`}
           </div>
         </div>
       </div>
     `;
+
   }catch(err){ c.innerHTML = `${sectionHead('Communication','','' )}<div class="empty-state">${err.message}</div>`; }
+}
+function toggleChannel(id){
+  const el = document.getElementById(id);
+  el.classList.toggle('on');
+  if(id !== 'chEmail' && el.classList.contains('on')){
+    toast("Note: this channel isn't connected to a real provider yet, so turning it on here won't actually send anything through it.");
+  }
+}
+async function sendEmergencyAlert(){
+  const subject = document.getElementById('alertSubject').value.trim();
+  const message = document.getElementById('alertMessage').value.trim();
+  if(!subject || !message){ toast('Enter both a subject and a message.', true); return; }
+  const btn = document.getElementById('alertBtn');
+  btn.disabled = true; btn.textContent = 'Sending…';
+  try{
+    const data = await apiFetch('/api/communication/emergency-alert', { method:'POST', body: JSON.stringify({ subject, message }) });
+    toast(data.message || 'Alert sent.');
+    document.getElementById('alertSubject').value = '';
+    document.getElementById('alertMessage').value = '';
+  }catch(err){
+    toast(err.message, true);
+  }finally{
+    btn.disabled = false; btn.textContent = 'Send emergency alert';
+  }
 }
 
 /* ============================= REPORTS ============================= */
@@ -1246,10 +1265,6 @@ function renderSettings(){
 }
 
 /* ============================= INIT ============================= */
-if(authToken && currentUser){
-  document.getElementById('topRolePill').textContent = '';
-}
-renderRegisterRoleGrid();
 restoreSession();
 </script>
 
