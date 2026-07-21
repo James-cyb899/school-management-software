@@ -9,6 +9,8 @@ const pdfRouter = require('./src/pdf');
 const aiRouter = require('./src/aiRoutes');
 const usersRouter = require('./src/users');
 const communicationRouter = require('./src/communication');
+const { router: mpesaRouter, mpesaConfigured } = require('./src/mpesa');
+const { router: settingsRouter } = require('./src/settingsRoutes');
 const { isConfigured: mailerConfigured } = require('./src/mailer');
 
 const app = express();
@@ -24,11 +26,14 @@ app.get('/api/health', (req, res) => {
     ok: true,
     mailerConfigured: mailerConfigured(),
     aiConfigured: Boolean(process.env.ANTHROPIC_API_KEY),
+    mpesaConfigured: mpesaConfigured(),
   });
 });
 
 app.use('/api', usersRouter);      // /api/users (admin only)
 app.use('/api', communicationRouter); // /api/communication/emergency-alert
+app.use('/api', settingsRouter);   // /api/settings/security
+app.use('/api', mpesaRouter);      // /api/mpesa/stkpush, /api/mpesa/callback, /api/mpesa/status/:id
 app.use('/api', entitiesRouter);   // /api/:entity  (students, staff, finance, ...)
 app.use('/api', pdfRouter);        // /api/finance/:id/statement
 app.use('/api/ai', aiRouter);      // /api/ai/chat
