@@ -18,18 +18,19 @@ function getTransporter() {
   return transporter;
 }
 
-async function sendMail({ to, subject, text, html }) {
+async function sendMail({ to, bcc, subject, text, html }) {
   const t = getTransporter();
   if (!t) {
     console.warn(
-      `[mailer] GMAIL_USER / GMAIL_APP_PASSWORD not set in .env — skipped sending email to ${to}: "${subject}". ` +
+      `[mailer] GMAIL_USER / GMAIL_APP_PASSWORD not set in .env — skipped sending email to ${to || bcc}: "${subject}". ` +
       `Set these in your .env file to enable real emails (see README).`
     );
     return { skipped: true };
   }
   return t.sendMail({
     from: `"School Management Software" <${process.env.GMAIL_USER}>`,
-    to,
+    to: to || process.env.GMAIL_USER,
+    bcc,
     subject,
     text,
     html,
