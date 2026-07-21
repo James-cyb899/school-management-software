@@ -8,6 +8,7 @@ const { router: entitiesRouter } = require('./src/entities');
 const pdfRouter = require('./src/pdf');
 const aiRouter = require('./src/aiRoutes');
 const usersRouter = require('./src/users');
+const communicationRouter = require('./src/communication');
 const { isConfigured: mailerConfigured } = require('./src/mailer');
 
 const app = express();
@@ -27,6 +28,7 @@ app.get('/api/health', (req, res) => {
 });
 
 app.use('/api', usersRouter);      // /api/users (admin only)
+app.use('/api', communicationRouter); // /api/communication/emergency-alert
 app.use('/api', entitiesRouter);   // /api/:entity  (students, staff, finance, ...)
 app.use('/api', pdfRouter);        // /api/finance/:id/statement
 app.use('/api/ai', aiRouter);      // /api/ai/chat
